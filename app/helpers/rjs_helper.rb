@@ -82,8 +82,40 @@ module RjsHelper
     rjs_method :toggle_element, element
   end
 
+  #----------------------------------------------------------------
+  #                        Other GUI Actions
+  #----------------------------------------------------------------
+
+  # Scrolls to the given element on the page.
+  # If the symbol +:top+ is given, the page will scroll to
+  # top without having to specify a certain element
+  #
+  # Additionally, an offset can be given as the second parameter.
+  # This is e.g. useful in cases of layouts with a fixed top navbar.
+  #--------------------------------------------------------------
+  def js_scroll_to(element, offset_top = 0)
+    if element == :top
+      rjs_method :scroll_to_top, offset_top
+    else
+      rjs_method :scroll_to_element, :element => element, :args => [offset_top]
+    end
+  end
+
   private
 
+  #
+  # @param [Symbol, String] func
+  #   The function to be executed. The +_by_id* part does not have
+  #   to be given, it is automatically added if element given in +element_or_options+
+  #   is an instance of +{ActiveRecord::Base}+
+  #
+  # @param [ActiveRecord::Base, Hash] element_or_options
+  #   Either the element on which the javascript function should be executed
+  #   or a hash (usually used for rendering options)
+  #
+  # @return [String] a javascript string to execute the corresponding
+  #   method in rjs_helpers.coffee
+  #
   def rjs_method(func, element_or_options = {})
     if element_or_options.is_a?(Hash)
       element = element_or_options.delete(:element)
@@ -107,11 +139,15 @@ module RjsHelper
     js_args << rendered_content(content) if content
     js_args += args
 
-    %{rjsHelpers.#{js_function}(#{string_args(js_args)});}
+    if defined?(ActiveSupport::SafeBuffer)
+      %{rjsHelpers.#{js_function}(#{string_args(js_args)});}.html_safe
+    else
+      %{rjsHelpers.#{js_function}(#{string_args(js_args)});}
+    end
   end
 
   def string_args(args)
-    args.map {|a| "'#{a}'"}.join(', ')
+    args.map {|a| a.is_a?(Numeric) ? a : "'#{a}'"}.join(', ')
   end
 
 
